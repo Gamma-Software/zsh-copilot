@@ -197,7 +197,17 @@ function _zsh_copilot_uninstall() {
 }
 
 function _zsh_validate_ping_api() {
-    local response_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ZSH_COPILOT_API_KEY" https://api.openai.com/v1/models)
+    local ping_url="https://api.openai.com/v1/models"
+    if [[ -n "$ZSH_COPILOT_API_URL" && "$ZSH_COPILOT_API_URL" != "https://api.openai.com/v1/chat/completions" ]]; then
+        if [[ "$ZSH_COPILOT_API_URL" == *"/chat/completions" ]]; then
+            ping_url="${ZSH_COPILOT_API_URL%/chat/completions}/models"
+        elif [[ "$ZSH_COPILOT_API_URL" == *"/models" ]]; then
+            ping_url="$ZSH_COPILOT_API_URL"
+        else
+            ping_url="${ZSH_COPILOT_API_URL%/}/models"
+        fi
+    fi
+    local response_code=$(curl -s -m 3 -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ZSH_COPILOT_API_KEY" "$ping_url")
     if [[ $response_code -eq 401 ]]; then
         echo "\033[0;31mError: Invalid API key\033[0m"
         return 1
@@ -205,7 +215,7 @@ function _zsh_validate_ping_api() {
         echo "\033[0;31mError: Rate limit exceeded\033[0m"
         return 1
     elif [[ $response_code -eq 000 ]]; then
-        echo "\033[0;31mError: Could not connect to OpenAI API. Please check your internet connection.\033[0m"
+        echo "\033[0;31mError: Could not connect to API at $ping_url. Please check your connection or LLM server.\033[0m"
         return 1
     elif [[ $response_code -ne 200 ]]; then
         echo "\033[0;31mError: API returned status code $response_code\033[0m"

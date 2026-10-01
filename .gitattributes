@@ -1,0 +1,5 @@
+# Enforce Unix LF line endings on all platforms
+*.sh text eol=lf
+*.zsh text eol=lf
+*.md text eol=lf
+*.template text eol=lf

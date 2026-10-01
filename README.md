@@ -118,6 +118,45 @@ Use `-h` for more information.
 zsh-copilot -h
 ```
 
+## Local & Custom LLM Support
+
+`zsh-copilot` supports any OpenAI-compatible API endpoint, allowing you to run completely offline using local models (e.g., **LM Studio**, **Ollama**, **vLLM**, or **LocalAI**).
+
+### Configuration via CLI
+
+Run the interactive configuration tool:
+```sh
+zsh-copilot config
+```
+Select option `2` to set the **API Endpoint URL**, option `1` for the **Model**, and option `3` to adjust **Max Tokens** (useful for reasoning models).
+
+### Manual Configuration (`.env`)
+
+You can also set these variables in `$ZSH_CUSTOM/plugins/zsh-copilot/.env`:
+
+#### LM Studio
+```sh
+ZSH_COPILOT_API_URL="http://localhost:1234/v1/chat/completions"
+ZSH_COPILOT_MODEL="<your-model-identifier>"
+ZSH_COPILOT_API_KEY="not-needed"
+ZSH_COPILOT_TOKENS=4000
+```
+
+#### Ollama
+```sh
+ZSH_COPILOT_API_URL="http://localhost:11434/v1/chat/completions"
+ZSH_COPILOT_MODEL="qwen2.5-coder:7b"
+ZSH_COPILOT_API_KEY="ollama"
+ZSH_COPILOT_TOKENS=2000
+```
+
+#### vLLM / LocalAI
+```sh
+ZSH_COPILOT_API_URL="http://localhost:8000/v1/chat/completions"
+ZSH_COPILOT_MODEL="<your-model-name>"
+ZSH_COPILOT_API_KEY="not-needed"
+```
+
 ### Command Prediction and Generation
 This plugin provides two powerful command-line features:
 

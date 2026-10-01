@@ -16,12 +16,21 @@ function _setup-zsh-copilot() {
     (( ! ${+ZSH_COPILOT_API_URL} )) &&
     typeset -g ZSH_COPILOT_API_URL="https://api.openai.com/v1/chat/completions"
 
-    # Fill up your OpenAI api key here.
+    # Automatically append /chat/completions if base URL was provided
+    if [[ -n "$ZSH_COPILOT_API_URL" && "$ZSH_COPILOT_API_URL" != *"/chat/completions" ]]; then
+        typeset -g ZSH_COPILOT_API_URL="${ZSH_COPILOT_API_URL%/}/chat/completions"
+    fi
+
+    # Fill up your API key here (not strictly required for local/custom endpoints)
     if (( ! ${+ZSH_COPILOT_API_KEY} )); then
-        echo "Error: ZSH_COPILOT_API_KEY is not set."
-        echo "Please reinstall the plugin and follow the setup instructions at:"
-        echo "https://github.com/Gamma-Software/zsh-copilot#installation"
-        return 1
+        if [[ "$ZSH_COPILOT_API_URL" != "https://api.openai.com/v1/chat/completions" ]]; then
+            typeset -g ZSH_COPILOT_API_KEY="not-needed"
+        else
+            echo "Error: ZSH_COPILOT_API_KEY is not set."
+            echo "Please reinstall the plugin and follow the setup instructions at:"
+            echo "https://github.com/Gamma-Software/zsh-copilot#installation"
+            return 1
+        fi
     fi
 
     # Default configurations
@@ -61,18 +70,20 @@ function _zsh_copilot_configure() {
     function show_current_config() {
         echo "\033[0;34mCurrent Configuration:\033[0m"
         echo "\033[1;33m1.\033[0m Model: ${ZSH_COPILOT_MODEL}"
-        echo "\033[1;33m2.\033[0m Max Tokens: ${ZSH_COPILOT_TOKENS}"
-        echo "\033[1;33m3.\033[0m API Key: ${ZSH_COPILOT_API_KEY}"
-        echo "\033[1;33m4.\033[0m Predict Shortcut: ${ZSH_COPILOT_SHORTCUT_PREDICT}"
-        echo "\033[1;33m5.\033[0m Ask Shortcut: ${ZSH_COPILOT_SHORTCUT_ASK}"
-        echo "\033[1;33m6.\033[0m Fix Shortcut: ${ZSH_COPILOT_SHORTCUT_FIX}"
-        echo "\033[1;33m7.\033[0m Exit"
+        echo "\033[1;33m2.\033[0m API Endpoint URL: ${ZSH_COPILOT_API_URL}"
+        echo "\033[1;33m3.\033[0m Max Tokens: ${ZSH_COPILOT_TOKENS}"
+        echo "\033[1;33m4.\033[0m API Key: ${ZSH_COPILOT_API_KEY}"
+        echo "\033[1;33m5.\033[0m Predict Shortcut: ${ZSH_COPILOT_SHORTCUT_PREDICT}"
+        echo "\033[1;33m6.\033[0m Ask Shortcut: ${ZSH_COPILOT_SHORTCUT_ASK}"
+        echo "\033[1;33m7.\033[0m Fix Shortcut: ${ZSH_COPILOT_SHORTCUT_FIX}"
+        echo "\033[1;33m8.\033[0m Exit"
     }
 
     # Create .env file if it doesn't exist
     if [[ ! -f "$env_file" ]]; then
         echo "\033[0;34mCreating new .env file...\033[0m"
         cat > "$env_file" << EOL
+ZSH_COPILOT_API_URL=${ZSH_COPILOT_API_URL}
 ZSH_COPILOT_MODEL=${ZSH_COPILOT_MODEL}
 ZSH_COPILOT_TOKENS=${ZSH_COPILOT_TOKENS}
 ZSH_COPILOT_API_KEY=${ZSH_COPILOT_API_KEY}
@@ -119,26 +130,38 @@ EOL
 
     while true; do
         show_current_config
-        echo "\n\033[0;34mWhat would you like to modify? (1-7):\033[0m"
+        echo "\n\033[0;34mWhat would you like to modify? (1-8):\033[0m"
         read choice
 
         case $choice in
             1)
-                echo "\033[0;34mEnter new model (e.g., gpt-3.5-turbo, gpt-4):\033[0m"
+                echo "\033[0;34mEnter new model (e.g., gpt-3.5-turbo, gpt-4, or local model id):\033[0m"
                 read new_model
                 update_config "ZSH_COPILOT_MODEL" "$new_model" "Model"
                 ;;
             2)
-                echo "\033[0;34mEnter new max tokens (50-2000):\033[0m"
-                read new_tokens
-                if [[ "$new_tokens" =~ ^[0-9]+$ ]] && [ "$new_tokens" -ge 50 ] && [ "$new_tokens" -le 2000 ]; then
-                    update_config "ZSH_COPILOT_TOKENS" "$new_tokens" "Max tokens"
+                echo "\033[0;34mEnter new API Endpoint URL (e.g., https://api.openai.com/v1/chat/completions or http://localhost:1234/v1/chat/completions):\033[0m"
+                read new_url
+                if [ -n "$new_url" ]; then
+                    if [[ "$new_url" != *"/chat/completions" ]]; then
+                        new_url="${new_url%/}/chat/completions"
+                    fi
+                    update_config "ZSH_COPILOT_API_URL" "$new_url" "API Endpoint URL"
                 else
-                    echo "\033[0;31mInvalid token value. Please enter a number between 50 and 2000.\033[0m"
+                    echo "\033[0;31mAPI Endpoint URL cannot be empty.\033[0m"
                 fi
                 ;;
             3)
-                echo "\033[0;34mEnter new OpenAI API key:\033[0m"
+                echo "\033[0;34mEnter new max tokens (50-100000):\033[0m"
+                read new_tokens
+                if [[ "$new_tokens" =~ ^[0-9]+$ ]] && [ "$new_tokens" -ge 50 ] && [ "$new_tokens" -le 100000 ]; then
+                    update_config "ZSH_COPILOT_TOKENS" "$new_tokens" "Max tokens"
+                else
+                    echo "\033[0;31mInvalid token value. Please enter a number between 50 and 100000.\033[0m"
+                fi
+                ;;
+            4)
+                echo "\033[0;34mEnter API key (or 'not-needed' if using local LLM):\033[0m"
                 read new_key
                 if [ -n "$new_key" ]; then
                     update_config "ZSH_COPILOT_API_KEY" "$new_key" "API key"
@@ -146,33 +169,33 @@ EOL
                     echo "\033[0;31mAPI key cannot be empty.\033[0m"
                 fi
                 ;;
-            4)
+            5)
                 echo "\033[0;34mPress the desired shortcut for predict command:\033[0m"
                 local sequence=$(_zsh_copilot_read_shortcut)
                 if [[ -n "$sequence" ]]; then
                     update_config "ZSH_COPILOT_SHORTCUT_PREDICT" "$sequence" "Predict shortcut"
                 fi
                 ;;
-            5)
+            6)
                 echo "\033[0;34mPress the desired shortcut for ask command:\033[0m"
                 local sequence=$(_zsh_copilot_read_shortcut)
                 if [[ -n "$sequence" ]]; then
                     update_config "ZSH_COPILOT_SHORTCUT_ASK" "$sequence" "Ask shortcut"
                 fi
                 ;;
-            6)
+            7)
                 echo "\033[0;34mPress the desired shortcut for fix command:\033[0m"
                 local sequence=$(_zsh_copilot_read_shortcut)
                 if [[ -n "$sequence" ]]; then
                     update_config "ZSH_COPILOT_SHORTCUT_FIX" "$sequence" "Fix shortcut"
                 fi
                 ;;
-            7)
+            8)
                 echo "\033[0;32mConfiguration complete!\033[0m"
                 return 0
                 ;;
             *)
-                echo "\033[0;31mInvalid choice. Please select 1-7.\033[0m"
+                echo "\033[0;31mInvalid choice. Please select 1-8.\033[0m"
                 ;;
         esac
         echo
